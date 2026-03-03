@@ -20,8 +20,8 @@ PROMPT_TEMPLATES: dict[str, str] = {
 }
 
 
-def load_prompt_template(schema_type: str = "medical") -> str:
-    path = PROMPT_TEMPLATES.get(schema_type, "prompts/kg_extraction.yaml")
+def load_prompt_template(schema_type: str = "book") -> str:
+    path = PROMPT_TEMPLATES.get(schema_type, "prompts/kg_extraction_book.yaml")
     with open(Path(__file__).parent / path, "r") as f:
         data = yaml.safe_load(f)
     return data["prompt_template"]
