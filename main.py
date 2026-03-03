@@ -75,16 +75,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--chunk-size",
         type=int,
-        default=500,
+        default=4000,
         dest="chunk_size",
-        help="Text splitter chunk size in characters (default: 500)",
+        help="Text splitter chunk size in characters (default: 4000)",
     )
     parser.add_argument(
         "--chunk-overlap",
         type=int,
-        default=50,
+        default=200,
         dest="chunk_overlap",
-        help="Text splitter chunk overlap in characters (default: 50)",
+        help="Text splitter chunk overlap in characters (default: 200)",
     )
     parser.add_argument(
         "--no-approximate-split",
