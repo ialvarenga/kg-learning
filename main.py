@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import logging
 import os
 from pathlib import Path
 import yaml
@@ -9,6 +10,13 @@ from neo4j_graphrag.embeddings.ollama import OllamaEmbeddings
 from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
 from neo4j_graphrag.experimental.pipeline.kg_builder import SimpleKGPipeline
 from graph_schema import get_graph_schema
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USERNAME = "neo4j"
@@ -91,15 +99,15 @@ def get_llm_and_embedder(provider: str, model: str | None = None, embedding_mode
         llm = OllamaLLM(
             model_name=model,
             model_params={
-                "response_format": {"type": "json_object"},
-                "temperature": 0,
-            },
+                "format": "json",
+                "options": {"temperature": 0, "num_ctx": 4096}
+            }
         )
         embedder = OllamaEmbeddings(model=embedding_model)
     return llm, embedder
 
 
-def build_kg_pipeline(llm, embedder, driver: neo4j.Driver, schema_type: str = "medical") -> SimpleKGPipeline:
+def build_kg_pipeline(llm, embedder, driver: neo4j.Driver, schema_type: str = "book") -> SimpleKGPipeline:
     node_labels, rel_types = get_graph_schema(schema_type)
     prompt_template = load_prompt_template(schema_type)
     return SimpleKGPipeline(
@@ -116,11 +124,26 @@ def build_kg_pipeline(llm, embedder, driver: neo4j.Driver, schema_type: str = "m
 
 def main():
     args = parse_args()
+
+    model = args.model or DEFAULTS[args.provider]["model"]
+    embedding_model = args.embedding_model or DEFAULTS[args.provider]["embedding_model"]
+
+    logger.info("=== KG Pipeline Configuration ===")
+    logger.info("  Provider:        %s", args.provider)
+    logger.info("  LLM model:       %s", model)
+    logger.info("  Embedding model: %s", embedding_model)
+    logger.info("  Schema:          %s", args.schema)
+    logger.info("  Input file:      %s", args.file)
+    logger.info("  Neo4j URI:       %s", NEO4J_URI)
+    logger.info("=================================")
+
     driver = get_neo4j_driver()
     llm, embedder = get_llm_and_embedder(args.provider, args.model, args.embedding_model)
     kg_builder = build_kg_pipeline(llm, embedder, driver, schema_type=args.schema)
 
+    logger.info("Starting pipeline run...")
     result = asyncio.run(kg_builder.run_async(file_path=args.file))
+    logger.info("Pipeline finished.")
     print(result.result)
 
 
