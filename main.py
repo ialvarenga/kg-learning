@@ -8,20 +8,28 @@ from neo4j_graphrag.llm import OllamaLLM, OpenAILLM
 from neo4j_graphrag.embeddings.ollama import OllamaEmbeddings
 from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
 from neo4j_graphrag.experimental.pipeline.kg_builder import SimpleKGPipeline
+from graph_schema import get_graph_schema
 
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USERNAME = "neo4j"
 NEO4J_PASSWORD = "your_password"
 
-def load_prompt_template(path: str = "prompts/kg_extraction.yaml") -> str:
+PROMPT_TEMPLATES: dict[str, str] = {
+    "medical": "prompts/kg_extraction.yaml",
+    "book": "prompts/kg_extraction_book.yaml",
+}
+
+
+def load_prompt_template(schema_type: str = "medical") -> str:
+    path = PROMPT_TEMPLATES.get(schema_type, "prompts/kg_extraction.yaml")
     with open(Path(__file__).parent / path, "r") as f:
         data = yaml.safe_load(f)
     return data["prompt_template"]
 
 
 DEFAULTS = {
-    "openai": {"model": "gpt-4o", "embedding_model": "text-embedding-3-small"},
-    "ollama": {"model": "llama3.2", "embedding_model": "nomic-embed-text"},
+    "openai": {"model": "gpt-5.2", "embedding_model": "text-embedding-3-small"},
+    "ollama": {"model": "qwen2.5:7b", "embedding_model": "nomic-embed-text"},
 }
 
 
@@ -48,6 +56,12 @@ def parse_args() -> argparse.Namespace:
         "-f", "--file",
         default="data/a-morte-de-ivan-ilitch.pdf",
         help="Path to the PDF file to process (default: data/a-morte-de-ivan-ilitch.pdf)",
+    )
+    parser.add_argument(
+        "-s", "--schema",
+        choices=["book", "medical"],
+        default="book",
+        help="Graph schema to use for entity extraction: 'book' or 'medical' (default: book)",
     )
     return parser.parse_args()
 
@@ -85,23 +99,9 @@ def get_llm_and_embedder(provider: str, model: str | None = None, embedding_mode
     return llm, embedder
 
 
-def get_graph_schema() -> tuple[list[str], list[str]]:
-    basic_node_labels = ["Object", "Entity", "Group", "Person", "Organization", "Place"]
-    academic_node_labels = ["ArticleOrPaper", "PublicationOrJournal"]
-    medical_node_labels = [
-        "Anatomy", "BiologicalProcess", "Cell", "CellularComponent",
-        "CellType", "Condition", "Disease", "Drug",
-        "EffectOrPhenotype", "Exposure", "GeneOrProtein", "Molecule",
-        "MolecularFunction", "Pathway",
-    ]
-    node_labels = basic_node_labels + academic_node_labels + medical_node_labels
-    rel_types = ["ACTIVATES", "AFFECTS", "ASSESSES", "ASSOCIATED_WITH", "AUTHORED", "BIOMARKER_FOR"]
-    return node_labels, rel_types
-
-
-def build_kg_pipeline(llm, embedder, driver: neo4j.Driver) -> SimpleKGPipeline:
-    node_labels, rel_types = get_graph_schema()
-    prompt_template = load_prompt_template()
+def build_kg_pipeline(llm, embedder, driver: neo4j.Driver, schema_type: str = "medical") -> SimpleKGPipeline:
+    node_labels, rel_types = get_graph_schema(schema_type)
+    prompt_template = load_prompt_template(schema_type)
     return SimpleKGPipeline(
         llm=llm,
         driver=driver,
@@ -118,7 +118,7 @@ def main():
     args = parse_args()
     driver = get_neo4j_driver()
     llm, embedder = get_llm_and_embedder(args.provider, args.model, args.embedding_model)
-    kg_builder = build_kg_pipeline(llm, embedder, driver)
+    kg_builder = build_kg_pipeline(llm, embedder, driver, schema_type=args.schema)
 
     result = asyncio.run(kg_builder.run_async(file_path=args.file))
     print(result.result)

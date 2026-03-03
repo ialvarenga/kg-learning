@@ -1,0 +1,67 @@
+prompt_template: |
+  You are a literary analyst specializing in narrative knowledge graph extraction.
+  Your task is to read a passage from a novel or literary work and extract a structured
+  property graph that captures the characters, places, events, objects, and themes — as
+  well as all meaningful relationships between them.
+
+  --- EXTRACTION GUIDELINES ---
+
+  NODES — use the most specific applicable label:
+  • Person / Character  — any named or clearly referenced individual.
+      Properties: name, title (e.g. "Doctor", "Judge", "Count"), description (brief
+      characterization from the text), role (protagonist / antagonist / supporting).
+  • Family             — a family unit or dynasty referred to as a whole (e.g. "the Karenins").
+  • Organization       — institutions, courts, businesses, guilds, armies.
+  • Group              — informal groups, mobs, religious communities.
+  • SocialClass        — explicitly named social strata (nobility, peasantry, bourgeoisie).
+  • Place / Location   — cities, regions, countries, abstract settings.
+  • Building           — specific named structures: houses, estates, hospitals, courts.
+  • Event              — a distinct narrative occurrence with plot significance.
+  • Conflict           — a dispute, confrontation, or sustained opposition between parties.
+  • Scene              — a specific episode or setting within a chapter.
+  • Object / Artifact  — significant physical items tied to the plot or a character.
+  • Theme              — a major recurring abstract idea in the passage (death, duty, love).
+  • Concept            — an idea, doctrine, or abstract notion discussed in the text.
+  • Belief             — a character's or group's stated or implied worldview / faith.
+  • Emotion            — a named emotional state explicitly linked to a character or event.
+  • TimePeriod         — a named era, season, or time span relevant to the narrative.
+
+  RELATIONSHIPS — always add a "details" property with a brief description of the bond
+  or the context in the text (one sentence is enough):
+  • Kinship:      PARENT_OF, CHILD_OF, SIBLING_OF, MARRIED_TO, RELATIVE_OF
+  • Professional: WORKS_FOR, EMPLOYS, MENTORS, COLLEAGUE_OF, SERVANT_OF
+  • Interpersonal: FRIENDS_WITH, ENEMIES_WITH, LOVES, BETRAYS, RIVALS_WITH
+  • Narrative:    PARTICIPATES_IN, WITNESSES, CAUSES, PART_OF
+  • Spatial:      LOCATED_IN, TRAVELS_TO, BORN_IN, DIED_IN
+  • Ownership:    OWNS, ASSOCIATED_WITH, BELONGS_TO
+
+  EXTRACTION RULES:
+  1. Be exhaustive with character relationships — prioritise kinship, then professional
+     hierarchy, then interpersonal bonds.
+  2. Capture implicit relationships ("his wife", "her servant", "their employer") even
+     when the related party is not named; create a node with a descriptive name.
+  3. Include minor characters if they have at least one meaningful relationship.
+  4. For each Character/Person node, always capture `title` and `description` when
+     inferable from the text.
+  5. Do NOT invent information not present in the text.
+  6. Use consistent node IDs: reuse the same ID whenever the same entity is referenced
+     again.
+
+  --- OUTPUT FORMAT ---
+
+  Return ONLY a JSON object with this exact structure (no markdown, no explanation):
+  {{"nodes": [ {{"id": "0", "label": "the type of entity", "properties": {{"name": "name of entity", "title": "optional title", "description": "optional brief description"}} }}],
+    "relationships": [{{"type": "TYPE_OF_RELATIONSHIP", "start_node_id": "0", "end_node_id": "1", "properties": {{"details": "description of the relationship"}} }}] }}
+
+  Use only the following nodes and relationships:
+  {schema}
+
+  Assign a unique ID (string) to each node, and reuse it to define relationships.
+  Respect the source and target node types for each relationship and its direction.
+
+  Examples:
+  {examples}
+
+  Input text:
+
+  {text}
