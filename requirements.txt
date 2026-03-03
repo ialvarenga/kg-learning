@@ -2,3 +2,9 @@ neo4j==5.28.1
 neo4j-graphrag[ollama]
 neo4j-graphrag[openai]
 pyyaml
+requests
+transformers
+torch
+pdfplumber
+langchain-text-splitters
+sentence-transformers
