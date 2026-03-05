@@ -72,20 +72,35 @@ def _get_openai_client(
     base_url: str = "http://localhost:11434/v1",
     api_key: str = "ollama",
 ) -> OpenAI:
-    """Return a (cached) OpenAI-compatible client pointed at Ollama."""
+    """Return a (cached) OpenAI-compatible client.
+
+    The client is selected based on the PROVIDER environment variable:
+    - 'openai': uses the standard OpenAI API with OPENAI_API_KEY
+    - 'ollama' (default): uses the local Ollama instance
+    """
     global _openai_client
     if _openai_client is None:
-        _openai_client = OpenAI(base_url=base_url, api_key=api_key)
+        provider = os.environ.get("PROVIDER", "ollama").lower()
+        if provider == "openai":
+            _openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        else:
+            _openai_client = OpenAI(base_url=base_url, api_key=api_key)
     return _openai_client
 
 
 def chat(
     messages: list[dict],
-    model: str = "llama3.2",
+    model: str = None,
     base_url: str = "http://localhost:11434/v1",
     api_key: str = "ollama",
 ) -> str:
-    """Send *messages* to the Ollama-served model and return the reply text."""
+    """Send *messages* to the configured model and return the reply text.
+
+    The provider is determined by the PROVIDER environment variable.
+    """
+    provider = os.environ.get("PROVIDER", "ollama").lower()
+    if model is None:
+        model = "gpt-4o" if provider == "openai" else "llama3.2"
     client = _get_openai_client(base_url=base_url, api_key=api_key)
     response = client.chat.completions.create(model=model, messages=messages)
     return response.choices[0].message.content.strip()
