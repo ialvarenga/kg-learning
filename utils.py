@@ -93,6 +93,7 @@ def chat(
     model: str = None,
     base_url: str = "http://localhost:11434/v1",
     api_key: str = "ollama",
+    config: dict = {},
 ) -> str:
     """Send *messages* to the configured model and return the reply text.
 
@@ -102,7 +103,7 @@ def chat(
     if model is None:
         model = "gpt-4o" if provider == "openai" else "llama3.2"
     client = _get_openai_client(base_url=base_url, api_key=api_key)
-    response = client.chat.completions.create(model=model, messages=messages)
+    response = client.chat.completions.create(model=model, messages=messages, **config)
     return response.choices[0].message.content.strip()
 
 
